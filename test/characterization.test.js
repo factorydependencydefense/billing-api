@@ -1,4 +1,5 @@
-// These assertions pin today's vulnerable behaviour and are expected to be inverted by the remediation PR.
+// These assertions pin the secure behaviour after the jsonwebtoken 9.0.3 upgrade: an HS256 token
+// signed with the RSA public key is no longer mistaken for a legitimate RS256 token.
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
@@ -25,18 +26,20 @@ async function withPublicKey(key, fn) {
   }
 }
 
-test('vulnerable today: an HS256 token signed with the RSA public key is accepted', () => {
-  const claims = verifyBillingToken(forgeWithPublicKey({ sub: 'attacker' }), PUBLIC_PEM);
-  assert.equal(claims.sub, 'attacker');
+test('secure now: an HS256 token signed with the RSA public key is rejected', () => {
+  assert.throws(
+    () => verifyBillingToken(forgeWithPublicKey({ sub: 'attacker' }), PUBLIC_PEM),
+    jwt.JsonWebTokenError,
+  );
 });
 
-test('vulnerable today: POST /plans/:id/change authorizes a token forged with the RSA public key', async () => {
+test('secure now: POST /plans/:id/change rejects a token forged with the RSA public key', async () => {
   await withPublicKey(PUBLIC_PEM, async () => {
     const token = forgeWithPublicKey({ sub: 'attacker', scopes: ['plans:write'] });
     const res = await request(createApp())
       .post('/plans/team/change')
       .set('Authorization', `Bearer ${token}`)
-      .expect(200);
-    assert.equal(res.body.actor, 'attacker');
+      .expect(401);
+    assert.equal(res.body.error, 'invalid token');
   });
 });
