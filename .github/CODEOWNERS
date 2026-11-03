@@ -1,0 +1,6 @@
+# Paths that decide what this repo trusts. A change to any of them needs a human review,
+# including when the pull request was opened by Droid (SPEC Decision 15).
+/.github/ @MikeBrouwers
+/.npmrc @MikeBrouwers
+/renovate.json @MikeBrouwers
+/package.json @MikeBrouwers
