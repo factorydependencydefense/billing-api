@@ -19,7 +19,7 @@ jobs:
           node-version: '24'
       - run: npm install
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.FDD_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
       - run: npm run build
       - run: npm test
 
@@ -34,6 +34,6 @@ jobs:
           node-version: '24'
       - run: npm install
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.FDD_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
       - name: Assert the secure behaviour
         run: npm run test:security
