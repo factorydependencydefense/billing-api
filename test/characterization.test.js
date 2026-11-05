@@ -15,6 +15,11 @@ function forgeWithPublicKey(payload) {
   return jwt.sign(payload, PUBLIC_PEM, { algorithm: 'HS256' });
 }
 
+function unsignedToken(payload) {
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  return `${encode({ alg: 'none', typ: 'JWT' })}.${encode(payload)}.`;
+}
+
 async function withPublicKey(key, fn) {
   const previous = process.env.BILLING_JWT_PUBLIC_KEY;
   process.env.BILLING_JWT_PUBLIC_KEY = key;
@@ -41,5 +46,21 @@ test('secure now: POST /plans/:id/change rejects a token forged with the RSA pub
       .set('Authorization', `Bearer ${token}`)
       .expect(401);
     assert.equal(res.body.error, 'invalid token');
+  });
+});
+
+test('secure now: an unsigned alg:none token is rejected', () => {
+  const token = unsignedToken({ sub: 'attacker', scopes: ['plans:write'] });
+  assert.throws(() => verifyBillingToken(token, PUBLIC_PEM), {
+    name: 'JsonWebTokenError',
+    message: /signature is required/,
+  });
+});
+
+test('secure now: a legacy 1024-bit RSA key is refused for RS256', () => {
+  const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 1024 });
+  const legacyPem = privateKey.export({ type: 'pkcs8', format: 'pem' });
+  assert.throws(() => jwt.sign({ sub: 'ops@example.com' }, legacyPem, { algorithm: 'RS256' }), {
+    message: /minimum key size of 2048 bits/,
   });
 });
